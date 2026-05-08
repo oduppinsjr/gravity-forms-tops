@@ -4,7 +4,7 @@ Tags: gravity forms, tops, towx, towing, api
 Requires at least: 6.2
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.3.5
+Stable tag: 1.3.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -46,6 +46,19 @@ In Gravity Forms form meta for that form. Current versions encrypt the password 
 Yes. Configure the field map separately on each site.
 
 == Changelog ==
+
+= 1.3.8 =
+* Confirmation **{organization}** and default “Thank you for contacting …” now use the **WordPress Site Title** (Settings → General → Site Title, option `blogname`) when the per-form override field is left blank.
+
+= 1.3.7 =
+* **Per-form TowX confirmation text** (Form Settings → TOPS → TowX confirmation text): optional override for the name shown in defaults and `{organization}` (otherwise uses **Settings → General → Site Title**), optional contact HTML when TowX fails (overrides global setting per form), and optional custom success/error/unclear templates with placeholders `{call_id}`, `{error}`, `{organization}`, `{site_name}`, `{contact_html}`.
+* Default success intro thanks the visitor using the **site title** when no override is set; replaced generic “our team” follow-up with neutral copy.
+
+= 1.3.6 =
+* **Confirmation timing:** Run TowX Create Call on `gform_pre_handle_confirmation` (before the confirmation is built) instead of `gform_after_submission`, so the confirmation message can reflect success (Call ID), API error, or an ambiguous state. Previously the result transient was stored too late for `gform_confirmation` to see it.
+* Richer default confirmation HTML for those outcomes; optional site-wide **Confirmation: contact line when TowX fails** (HTML) under Forms → Settings → TOPS (shown on errors and ambiguous states; message confirmations only, not redirects).
+* Error notification email: trim + `sanitize_email`; optional diagnostic line in the PHP error log when logging is enabled and the address is missing/invalid.
+* PHPCS: document direct `$wpdb` use for the custom request-log table and uninstall `DROP TABLE`.
 
 = 1.3.5 =
 * Encrypt TowX **password** and **authentication key** at rest in form meta using `GFCommon::openssl_encrypt` (same scheme as Gravity Forms). Existing plaintext values migrate to ciphertext the next time form settings are saved.

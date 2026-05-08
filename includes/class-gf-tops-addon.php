@@ -112,7 +112,8 @@ class GF_Tops_Addon extends GFAddOn {
 	public function init() {
 		parent::init();
 
-		add_action( 'gform_after_submission', array( $this, 'after_submission' ), 10, 2 );
+		// TowX Create Call must run before confirmation is built (see gform_confirmation). after_submission fires too late.
+		add_action( 'gform_pre_handle_confirmation', array( $this, 'pre_handle_confirmation_towx' ), 10, 2 );
 		add_filter( 'gform_confirmation', array( $this, 'filter_confirmation' ), 20, 4 );
 
 		add_filter( 'gform_pre_render', array( $this, 'pre_render_populate' ), 10, 1 );
@@ -941,7 +942,14 @@ class GF_Tops_Addon extends GFAddOn {
 						'label' => esc_html__( 'Error notification email', 'gravity-forms-tops' ),
 						'type'  => 'text',
 						'class' => 'medium',
-						'tooltip' => esc_html__( 'Optional. Receives diagnostic emails when TowX submission fails or returns invalid XML.', 'gravity-forms-tops' ),
+						'tooltip' => esc_html__( 'Optional. Must be a valid email address. Receives diagnostic emails when TowX Create Call fails (transport error, API error, or unexpected response). Leave blank to skip email.', 'gravity-forms-tops' ),
+					),
+					array(
+						'name'  => 'confirmation_error_contact_html',
+						'label' => esc_html__( 'Confirmation: contact line when TowX fails', 'gravity-forms-tops' ),
+						'type'  => 'textarea',
+						'class' => 'large',
+						'tooltip' => esc_html__( 'Optional HTML shown after an API error when this form does not override it under Form Settings → TOPS → TowX confirmation text. Message confirmations only, not redirects.', 'gravity-forms-tops' ),
 					),
 					array(
 						'name'    => 'enable_logging',
@@ -1126,7 +1134,48 @@ class GF_Tops_Addon extends GFAddOn {
 						'type' => 'html',
 						'html' => '<p class="gf-tops-fieldmap-save-row">'
 							. '<button type="button" class="button button-primary gf-tops-section-save">' . esc_html__( 'Save settings', 'gravity-forms-tops' ) . '</button></p>'
-							. '<p class="description">' . esc_html__( 'Saves all TOPS settings on this tab (integration, authentication, and field map).', 'gravity-forms-tops' ) . '</p>',
+							. '<p class="description">' . esc_html__( 'Saves all TOPS settings on this tab (integration, authentication, field map, and confirmation text).', 'gravity-forms-tops' ) . '</p>',
+					),
+				),
+			),
+			array(
+				'title'       => esc_html__( 'TowX confirmation text', 'gravity-forms-tops' ),
+				'description' => esc_html__( 'Shown after submit when TowX returns a result (message confirmations only). The site name in confirmations comes from Settings → General → Site Title unless you override it per form below.', 'gravity-forms-tops' ),
+				'fields'      => array(
+					array(
+						'name'    => 'tops_confirmation_organization',
+						'label'   => esc_html__( 'Override organization name (optional)', 'gravity-forms-tops' ),
+						'type'    => 'text',
+						'class'   => 'large',
+						'tooltip' => esc_html__( 'Leave blank to use the WordPress Site Title (Settings → General). Set only if this form should show a different name in default confirmation text and in the {organization} placeholder.', 'gravity-forms-tops' ),
+					),
+					array(
+						'name'    => 'tops_confirmation_contact_html',
+						'label'   => esc_html__( 'Contact HTML when TowX fails (optional)', 'gravity-forms-tops' ),
+						'type'    => 'textarea',
+						'class'   => 'large',
+						'tooltip' => esc_html__( 'Overrides the global Forms → Settings → TOPS contact line for this form only (e.g. phone link). Allowed HTML is sanitized.', 'gravity-forms-tops' ),
+					),
+					array(
+						'name'    => 'tops_confirmation_success_custom',
+						'label'   => esc_html__( 'Custom message — TowX success (optional)', 'gravity-forms-tops' ),
+						'type'    => 'textarea',
+						'class'   => 'large',
+						'tooltip' => esc_html__( 'If set, replaces the default success block. Placeholders: {call_id}, {organization}, {site_name}, {contact_html}', 'gravity-forms-tops' ),
+					),
+					array(
+						'name'    => 'tops_confirmation_error_custom',
+						'label'   => esc_html__( 'Custom message — TowX error (optional)', 'gravity-forms-tops' ),
+						'type'    => 'textarea',
+						'class'   => 'large',
+						'tooltip' => esc_html__( 'If set, replaces the default error block. Placeholders: {error}, {organization}, {site_name}, {contact_html}', 'gravity-forms-tops' ),
+					),
+					array(
+						'name'    => 'tops_confirmation_unknown_custom',
+						'label'   => esc_html__( 'Custom message — unclear result (optional)', 'gravity-forms-tops' ),
+						'type'    => 'textarea',
+						'class'   => 'large',
+						'tooltip' => esc_html__( 'If set, replaces the default message when the response had no Call ID and no clear error. Placeholders: {organization}, {site_name}, {contact_html}', 'gravity-forms-tops' ),
 					),
 				),
 			),
@@ -1864,12 +1913,18 @@ class GF_Tops_Addon extends GFAddOn {
 	}
 
 	/**
-	 * After submission: POST XML to TowX.
+	 * Before Gravity Forms builds the confirmation: POST Create Call so `gform_confirmation` can read the result transient.
 	 *
 	 * @param array $entry Entry.
 	 * @param array $form  Form.
 	 */
-	public function after_submission( $entry, $form ) {
+	public function pre_handle_confirmation_towx( $entry, $form ) {
+		if ( ! is_array( $entry ) || ! is_array( $form ) ) {
+			return;
+		}
+		if ( 'spam' === rgar( $entry, 'status' ) ) {
+			return;
+		}
 		if ( ! $this->is_form_enabled( $form['id'] ) ) {
 			return;
 		}
@@ -1880,9 +1935,9 @@ class GF_Tops_Addon extends GFAddOn {
 			$entry,
 			$settings,
 			array(
-				'source'           => 'submission',
-				'notify_errors'    => true,
-				'store_transient'  => true,
+				'source'          => 'submission',
+				'notify_errors'   => true,
+				'store_transient' => true,
 			)
 		);
 	}
@@ -2426,7 +2481,7 @@ class GF_Tops_Addon extends GFAddOn {
 	}
 
 	/**
-	 * Filter confirmation message.
+	 * Filter confirmation message with TowX Create Call outcome (only after pre_handle_confirmation_towx runs).
 	 *
 	 * @param mixed $confirmation Confirmation.
 	 * @param array $form Form.
@@ -2447,23 +2502,44 @@ class GF_Tops_Addon extends GFAddOn {
 
 		delete_transient( 'gf_tops_result_' . $entry_id );
 
-		$call_key = isset( $data['call_key'] ) ? $data['call_key'] : null;
-		$error    = isset( $data['error'] ) ? $data['error'] : null;
+		$fragment = $this->build_tops_confirmation_fragment( $form, $entry, $data );
+		if ( $fragment === '' ) {
+			return $confirmation;
+		}
 
-		$append = '';
-		if ( $call_key ) {
-			$append .= '<p>' . sprintf(
-				/* translators: %s: TowX call reference */
-				esc_html__( 'Your Call ID: %s', 'gravity-forms-tops' ),
-				esc_html( $call_key )
-			) . '</p>';
-		} elseif ( $error ) {
-			$append .= '<p>' . esc_html__( 'We could not complete the tow dispatch automatically.', 'gravity-forms-tops' ) . '</p>';
-			$append .= '<p>' . esc_html( $error ) . '</p>';
+		/**
+		 * Replace the entire confirmation body with the TowX status fragment (default: append).
+		 *
+		 * @param bool  $replace Replace instead of append.
+		 * @param array $form    Form.
+		 * @param array $entry   Entry.
+		 * @param array $data    Transient payload (call_key, error, …).
+		 */
+		$replace = apply_filters( 'gf_tops_replace_confirmation_with_status', false, $form, $entry, $data );
+
+		if ( $replace ) {
+			/**
+			 * Full HTML for the confirmation when replacing. Default is the built-in TowX fragment.
+			 *
+			 * @param string $html    HTML (filtered).
+			 * @param array  $form    Form.
+			 * @param array  $entry   Entry.
+			 * @param array  $data    Result transient.
+			 * @param mixed  $confirmation Original confirmation (string or array).
+			 */
+			$fragment = apply_filters( 'gf_tops_confirmation_full_html', $fragment, $form, $entry, $data, $confirmation );
+			if ( is_string( $confirmation ) ) {
+				return $fragment;
+			}
+			if ( is_array( $confirmation ) && isset( $confirmation['message'] ) && is_string( $confirmation['message'] ) ) {
+				$confirmation['message'] = $fragment;
+				return $confirmation;
+			}
+			return $confirmation;
 		}
 
 		if ( is_string( $confirmation ) ) {
-			return $confirmation . $append;
+			return $confirmation . $fragment;
 		}
 
 		if ( is_array( $confirmation ) ) {
@@ -2471,12 +2547,186 @@ class GF_Tops_Addon extends GFAddOn {
 				return $confirmation;
 			}
 			if ( isset( $confirmation['message'] ) && is_string( $confirmation['message'] ) ) {
-				$confirmation['message'] .= $append;
+				$confirmation['message'] .= $fragment;
 				return $confirmation;
 			}
 		}
 
 		return $confirmation;
+	}
+
+	/**
+	 * HTML block for confirmation: success (Call ID), API/transport error, or ambiguous state.
+	 *
+	 * Per-form text lives under Form Settings → TOPS → TowX confirmation text. The default “contacting …”
+	 * name is the WordPress Site Title unless you set a per-form override or custom templates.
+	 *
+	 * @param array $form Form.
+	 * @param array $entry Entry.
+	 * @param array $data  gf_tops_result_* transient.
+	 * @return string HTML fragment.
+	 */
+	protected function build_tops_confirmation_fragment( $form, $entry, array $data ) {
+		$settings = $this->get_form_settings( $form );
+
+		$call_key = isset( $data['call_key'] ) && $data['call_key'] !== '' && $data['call_key'] !== null
+			? (string) $data['call_key']
+			: '';
+		$error    = isset( $data['error'] ) && $data['error'] !== '' && $data['error'] !== null
+			? (string) $data['error']
+			: '';
+
+		$contact_html = $this->get_form_confirmation_contact_html( $settings );
+		$pairs        = $this->get_tops_confirmation_placeholder_pairs( $call_key, $error, $settings, $contact_html );
+
+		if ( $call_key !== '' ) {
+			$custom = isset( $settings['tops_confirmation_success_custom'] ) ? trim( (string) $settings['tops_confirmation_success_custom'] ) : '';
+			if ( $custom !== '' ) {
+				$html = '<div class="gf-tops-confirmation gf-tops-confirmation--success">';
+				$html .= wp_kses_post( strtr( $custom, $pairs ) );
+				$html .= '</div>';
+			} else {
+				$html = $this->build_default_tops_confirmation_success( $settings, $call_key );
+			}
+		} elseif ( $error !== '' ) {
+			$custom = isset( $settings['tops_confirmation_error_custom'] ) ? trim( (string) $settings['tops_confirmation_error_custom'] ) : '';
+			if ( $custom !== '' ) {
+				$html = '<div class="gf-tops-confirmation gf-tops-confirmation--error">';
+				$html .= wp_kses_post( strtr( $custom, $pairs ) );
+				$html .= '</div>';
+			} else {
+				$html = $this->build_default_tops_confirmation_error( $error, $contact_html );
+			}
+		} else {
+			$custom = isset( $settings['tops_confirmation_unknown_custom'] ) ? trim( (string) $settings['tops_confirmation_unknown_custom'] ) : '';
+			if ( $custom !== '' ) {
+				$html = '<div class="gf-tops-confirmation gf-tops-confirmation--unknown">';
+				$html .= wp_kses_post( strtr( $custom, $pairs ) );
+				$html .= '</div>';
+			} else {
+				$html = $this->build_default_tops_confirmation_unknown( $contact_html );
+			}
+		}
+
+		return apply_filters( 'gf_tops_confirmation_fragment_html', $html, $form, $entry, $data );
+	}
+
+	/**
+	 * Contact snippet for error/unknown states: per-form HTML overrides global plugin HTML.
+	 *
+	 * @param array $settings Form add-on settings.
+	 * @return string HTML (already passed through wp_kses_post).
+	 */
+	protected function get_form_confirmation_contact_html( array $settings ) {
+		$raw = isset( $settings['tops_confirmation_contact_html'] ) ? trim( (string) $settings['tops_confirmation_contact_html'] ) : '';
+		if ( $raw === '' ) {
+			$plugin = $this->get_plugin_settings();
+			$raw    = isset( $plugin['confirmation_error_contact_html'] ) ? trim( (string) $plugin['confirmation_error_contact_html'] ) : '';
+		}
+		return $raw !== '' ? wp_kses_post( $raw ) : '';
+	}
+
+	/**
+	 * Placeholders for custom confirmation templates (escaped except allowed HTML in {contact_html}).
+	 *
+	 * @param string $call_key     Call ID.
+	 * @param string $error        Error message.
+	 * @param array  $settings     Form settings.
+	 * @param string $contact_html Sanitized contact HTML.
+	 * @return array<string, string>
+	 */
+	protected function get_tops_confirmation_placeholder_pairs( $call_key, $error, array $settings, $contact_html ) {
+		$org = $this->get_confirmation_organization_label( $settings );
+
+		return array(
+			'{call_id}'        => esc_html( $call_key ),
+			'{error}'          => esc_html( $error ),
+			'{organization}'   => esc_html( $org ),
+			'{site_name}'      => esc_html( get_bloginfo( 'name' ) ),
+			'{contact_html}'   => $contact_html,
+		);
+	}
+
+	/**
+	 * Name shown as “organization” in confirmations: optional per-form override, else WordPress Site Title (option `blogname`).
+	 *
+	 * @param array $settings Form add-on settings.
+	 * @return string
+	 */
+	protected function get_confirmation_organization_label( array $settings ) {
+		$override = isset( $settings['tops_confirmation_organization'] ) ? trim( (string) $settings['tops_confirmation_organization'] ) : '';
+		if ( $override !== '' ) {
+			return $override;
+		}
+
+		return trim( (string) get_bloginfo( 'name', 'display' ) );
+	}
+
+	/**
+	 * Default success copy — organization label defaults to Site Title from Settings → General.
+	 *
+	 * @param array  $settings Form add-on settings.
+	 * @param string $call_key Call reference.
+	 * @return string HTML fragment (wrapped).
+	 */
+	protected function build_default_tops_confirmation_success( array $settings, $call_key ) {
+		$org = $this->get_confirmation_organization_label( $settings );
+
+		$html = '<div class="gf-tops-confirmation gf-tops-confirmation--success">';
+		if ( $org !== '' ) {
+			$html .= '<p>' . sprintf(
+				/* translators: %s: site / organization name (WordPress Site Title unless overridden per form) */
+				esc_html__( 'Thank you for contacting %s.', 'gravity-forms-tops' ),
+				esc_html( $org )
+			) . '</p>';
+		} else {
+			$html .= '<p>' . esc_html__( 'Thank you for your submission.', 'gravity-forms-tops' ) . '</p>';
+		}
+		$html .= '<p>' . sprintf(
+			/* translators: %s: TowX Call ID / reference */
+			esc_html__( 'Your Call ID: %s — keep this number for any follow-up about this request.', 'gravity-forms-tops' ),
+			esc_html( $call_key )
+		) . '</p>';
+		$html .= '<p>' . esc_html__( 'You should receive follow-up about next steps.', 'gravity-forms-tops' ) . '</p>';
+		$html .= '</div>';
+
+		return $html;
+	}
+
+	/**
+	 * @param string $error        Error text.
+	 * @param string $contact_html Sanitized contact HTML.
+	 * @return string HTML fragment (wrapped).
+	 */
+	protected function build_default_tops_confirmation_error( $error, $contact_html ) {
+		$html = '<div class="gf-tops-confirmation gf-tops-confirmation--error">';
+		$html .= '<p>' . esc_html__( 'We could not send your request to dispatch automatically.', 'gravity-forms-tops' ) . '</p>';
+		$html .= '<p>' . sprintf(
+			/* translators: %s: technical or API error detail */
+			esc_html__( 'Details: %s', 'gravity-forms-tops' ),
+			esc_html( $error )
+		) . '</p>';
+		if ( $contact_html !== '' ) {
+			$html .= '<div class="gf-tops-confirmation__contact">' . $contact_html . '</div>';
+		}
+		$html .= '</div>';
+
+		return $html;
+	}
+
+	/**
+	 * @param string $contact_html Sanitized contact HTML.
+	 * @return string HTML fragment (wrapped).
+	 */
+	protected function build_default_tops_confirmation_unknown( $contact_html ) {
+		$html = '<div class="gf-tops-confirmation gf-tops-confirmation--unknown">';
+		$html .= '<p>' . esc_html__( 'Your submission was received, but the dispatch reference could not be confirmed. Use the contact options below if you need help.', 'gravity-forms-tops' ) . '</p>';
+		if ( $contact_html !== '' ) {
+			$html .= '<div class="gf-tops-confirmation__contact">' . $contact_html . '</div>';
+		}
+		$html .= '</div>';
+
+		return $html;
 	}
 
 	/**
@@ -2491,8 +2741,10 @@ class GF_Tops_Addon extends GFAddOn {
 		$this->log( $subject . ': ' . $message );
 
 		$plugin = $this->get_plugin_settings();
-		$to     = rgar( $plugin, 'notification_email' );
+		$raw_to = rgar( $plugin, 'notification_email' );
+		$to     = is_string( $raw_to ) ? sanitize_email( trim( $raw_to ) ) : '';
 		if ( ! is_email( $to ) ) {
+			$this->log( 'TowX error email skipped: invalid or empty Error notification email (Forms → Settings → TOPS).' );
 			return;
 		}
 

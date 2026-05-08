@@ -25,7 +25,7 @@ if ( ! function_exists( 'gf_tops_uninstall_drop_log_table' ) ) {
 	function gf_tops_uninstall_drop_log_table() {
 		global $wpdb;
 		$table = $wpdb->prefix . 'gf_tops_request_log';
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectDatabaseQuery,WordPress.DB.DirectDatabaseQuery.SchemaChange -- Uninstall only; identifier via %i (WP 6.2+).
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectDatabaseQuery,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall only; identifier via %i (WP 6.2+).
 		$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', $table ) );
 	}
 }

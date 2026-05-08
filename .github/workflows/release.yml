@@ -1,0 +1,37 @@
+# Builds a WordPress-ready ZIP: extracting yields wp-content/plugins/gravity-forms-tops/
+# (single top-level folder named gravity-forms-tops — no version suffix).
+
+name: Release ZIP
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  attach-zip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create gravity-forms-tops.zip
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          rsync -a \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='build/' \
+            ./ build/gravity-forms-tops/
+          ( cd build && zip -r9 ../gravity-forms-tops.zip gravity-forms-tops )
+          unzip -l gravity-forms-tops.zip | head -n 20
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: gravity-forms-tops.zip
+          generate_release_notes: true

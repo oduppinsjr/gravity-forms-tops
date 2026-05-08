@@ -118,7 +118,7 @@ class GF_Tops_Request_Log {
 
 		$formats = array( '%d', '%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%d' );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectDatabaseQuery -- Custom log table; wpdb->insert uses placeholders via $formats.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectDatabaseQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom log table; wpdb->insert uses placeholders via $formats.
 		$ok = $wpdb->insert( self::table_name(), $insert, $formats );
 		if ( ! $ok ) {
 			return false;
@@ -144,6 +144,7 @@ class GF_Tops_Request_Log {
 		$off = (int) $offset;
 
 		// Identifier placeholder %i requires WordPress 6.2+ (see plugin header).
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectDatabaseQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom log table; no object cache for admin log UI.
 		$total = (int) $wpdb->get_var(
 			$wpdb->prepare(
 				'SELECT COUNT(*) FROM %i WHERE form_id = %d',
@@ -152,6 +153,7 @@ class GF_Tops_Request_Log {
 			)
 		);
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectDatabaseQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom log table; no object cache for admin log UI.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				'SELECT * FROM %i WHERE form_id = %d ORDER BY id DESC LIMIT %d OFFSET %d',
@@ -180,6 +182,7 @@ class GF_Tops_Request_Log {
 	public static function get_row( $id, $form_id ) {
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectDatabaseQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom log table; single row for resend/preview.
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
 				'SELECT * FROM %i WHERE id = %d AND form_id = %d LIMIT 1',
@@ -196,7 +199,7 @@ class GF_Tops_Request_Log {
 	 */
 	public static function uninstall_drop() {
 		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.DirectDatabaseQuery.DirectDatabaseQuery -- Plugin uninstall only.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.DirectDatabaseQuery.DirectDatabaseQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Plugin uninstall only.
 		$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', self::table_name() ) );
 		delete_option( 'gf_tops_request_log_db_version' );
 	}
