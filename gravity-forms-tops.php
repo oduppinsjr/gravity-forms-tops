@@ -3,7 +3,7 @@
  * Plugin Name:       Gravity Forms TOPS / TowX Integration
  * Plugin URI:        https://github.com/oduppinsjr/gravity-forms-tops
  * Description:       Connect Gravity Forms to the TowX / TOPS (TOPSLink) API with configurable field mapping and dynamic vehicle options.
- * Version:           1.3.8
+ * Version:           1.3.9
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            Duppins Technology
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'GF_TOPS_VERSION', '1.3.8' );
+define( 'GF_TOPS_VERSION', '1.3.9' );
 define( 'GF_TOPS_FILE', __FILE__ );
 define( 'GF_TOPS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'GF_TOPS_URL', plugin_dir_url( __FILE__ ) );

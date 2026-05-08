@@ -50,7 +50,7 @@ class GF_Tops_GitHub_Updater {
 
 		add_filter( 'pre_set_site_transient_update_plugins', array( __CLASS__, 'inject_update' ), 10, 2 );
 		add_filter( 'plugins_api', array( __CLASS__, 'plugins_api' ), 10, 3 );
-		add_filter( 'upgrader_source_selection', array( __CLASS__, 'fix_github_archive_folder' ), 10, 4 );
+		add_filter( 'http_request_args', array( __CLASS__, 'github_release_zip_http_args' ), 10, 2 );
 	}
 
 	/**
@@ -277,45 +277,39 @@ class GF_Tops_GitHub_Updater {
 	}
 
 	/**
-	 * GitHub ZIP archives use a top-level folder like repo-tag; ensure Upgrader finds the plugin root.
+	 * Improve reliability when WordPress downloads GitHub release ZIPs (redirects to objects.githubusercontent.com).
 	 *
-	 * @param string      $source        Path.
-	 * @param string      $remote_source Remote path.
-	 * @param WP_Upgrader $upgrader      Upgrader.
-	 * @param array       $hook_extra    Extra.
-	 * @return string
+	 * @param array  $args Request arguments.
+	 * @param string $url  URL.
+	 * @return array
 	 */
-	public static function fix_github_archive_folder( $source, $remote_source, $upgrader, $hook_extra ) {
-		global $wp_filesystem;
-
-		$plugin_file = plugin_basename( GF_TOPS_FILE );
-		if ( empty( $hook_extra['plugin'] ) || $hook_extra['plugin'] !== $plugin_file ) {
-			return $source;
+	public static function github_release_zip_http_args( $args, $url ) {
+		if ( ! is_string( $url ) || substr( strtolower( $url ), -4 ) !== '.zip' ) {
+			return $args;
 		}
 
-		if ( ! is_object( $wp_filesystem ) || ! is_a( $wp_filesystem, 'WP_Filesystem_Base' ) ) {
-			return $source;
+		$host = wp_parse_url( $url, PHP_URL_HOST );
+		if ( ! is_string( $host ) ) {
+			return $args;
 		}
 
-		if ( ! $wp_filesystem->exists( $remote_source ) ) {
-			return $source;
+		$host_lower = strtolower( $host );
+		if ( $host_lower !== 'github.com' && $host_lower !== 'objects.githubusercontent.com' ) {
+			return $args;
 		}
 
-		$list = $wp_filesystem->dirlist( $remote_source );
-		if ( ! is_array( $list ) || count( $list ) !== 1 ) {
-			return $source;
+		if ( ! isset( $args['headers'] ) || ! is_array( $args['headers'] ) ) {
+			$args['headers'] = array();
 		}
 
-		$names = array_keys( $list );
-		$dir   = $names[0];
-		if ( $dir === 'gravity-forms-tops' ) {
-			return trailingslashit( $remote_source ) . $dir;
+		$args['headers']['Accept']     = 'application/octet-stream';
+		$args['headers']['User-Agent'] = 'WordPress/' . get_bloginfo( 'version' ) . '; ' . esc_url( home_url( '/' ) );
+
+		// Large redirects / slow disks on local envs.
+		if ( empty( $args['timeout'] ) || (int) $args['timeout'] < 60 ) {
+			$args['timeout'] = 60;
 		}
 
-		if ( preg_match( '/^gravity-forms-tops-/i', $dir ) ) {
-			return trailingslashit( $remote_source ) . $dir;
-		}
-
-		return $source;
+		return $args;
 	}
 }

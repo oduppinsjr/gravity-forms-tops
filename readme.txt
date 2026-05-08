@@ -4,7 +4,7 @@ Tags: gravity forms, tops, towx, towing, api
 Requires at least: 6.2
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.3.8
+Stable tag: 1.3.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -46,6 +46,10 @@ In Gravity Forms form meta for that form. Current versions encrypt the password 
 Yes. Configure the field map separately on each site.
 
 == Changelog ==
+
+= 1.3.9 =
+* **GitHub updates:** Removed the `upgrader_source_selection` hook that returned plugin paths without a trailing slash (WordPress core already picks the correct folder for single-root ZIPs). That mismatch caused “The package could not be installed” on many hosts.
+* **GitHub updates:** Set `Accept: application/octet-stream`, a consistent User-Agent, and a longer HTTP timeout when downloading `.zip` assets from GitHub / objects.githubusercontent.com.
 
 = 1.3.8 =
 * Confirmation **{organization}** and default “Thank you for contacting …” now use the **WordPress Site Title** (Settings → General → Site Title, option `blogname`) when the per-form override field is left blank.
