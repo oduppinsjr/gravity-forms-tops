@@ -23,7 +23,9 @@ We aim to acknowledge reports within a few business days.
 
 ## Sensitive data in this plugin
 
-- TowX **password** and **authentication key** are stored in Gravity Forms **form meta** (same database as your WordPress site). They are **not** encrypted at rest by this plugin. Restrict **form administrator** access, use **HTTPS** for wp-admin, and follow your host’s database security practices.
+- TowX **password** (`tops_password`) and **authentication key** (`tops_auth_key`) are stored in Gravity Forms **form meta** (same database as your WordPress site). Current releases encrypt **only these two fields** **at rest** using Gravity Forms’ built-in crypto (**AES-256-CTR** with **HMAC-SHA-512**, keyed from WordPress salts via `GFCommon::openssl_encrypt`). **TowX User ID** (`tops_user_id`) and **Session ID** (`tops_session_id`) live in the same form meta but are **not encrypted** by this plugin—they remain readable if someone can read the database.
+- Anyone who can read both your **database** and **`wp-config.php`** (or equivalent secrets) can still decrypt the encrypted credential fields—this is the usual WordPress trade-off for reversible secrets. Restrict **form administrator** access, use **HTTPS** for wp-admin, and follow your host’s database security practices.
+- Older installs may still hold **plaintext** password/key values until each form’s TOPS settings are saved again (migration is automatic on save).
 - Gravity Forms may embed the full form object (including add-on settings) in **admin JavaScript** on the form settings screen. This is core Gravity Forms behavior; mitigate with strict admin access and auditing.
 
 ## Out of scope

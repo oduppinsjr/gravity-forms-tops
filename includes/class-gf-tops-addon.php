@@ -12,6 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 require_once GF_TOPS_PATH . 'includes/class-gf-tops-xml.php';
 require_once GF_TOPS_PATH . 'includes/class-gf-tops-entry.php';
 require_once GF_TOPS_PATH . 'includes/class-gf-tops-request-log.php';
+require_once GF_TOPS_PATH . 'includes/class-gf-tops-secrets.php';
 
 /**
  * Class GF_Tops_Addon
@@ -222,7 +223,7 @@ class GF_Tops_Addon extends GFAddOn {
 	 */
 	public function get_setting( $setting_name, $default_value = '', $settings = false ) {
 		$value = parent::get_setting( $setting_name, $default_value, $settings );
-		if ( in_array( $setting_name, array( 'tops_password', 'tops_auth_key' ), true ) && $value !== '' && $value !== null ) {
+		if ( in_array( $setting_name, GF_Tops_Secrets::secret_field_names(), true ) && $value !== '' && $value !== null ) {
 			return '';
 		}
 		return $value;
@@ -251,7 +252,42 @@ class GF_Tops_Addon extends GFAddOn {
 		}
 
 		$settings = parent::get_form_settings( $form );
-		return is_array( $settings ) ? $settings : array();
+		if ( ! is_array( $settings ) ) {
+			return array();
+		}
+
+		foreach ( GF_Tops_Secrets::secret_field_names() as $secret_key ) {
+			if ( ! isset( $settings[ $secret_key ] ) || '' === $settings[ $secret_key ] ) {
+				continue;
+			}
+			$settings[ $secret_key ] = GF_Tops_Secrets::decrypt_at_rest( (string) $settings[ $secret_key ] );
+		}
+
+		return $settings;
+	}
+
+	/**
+	 * Encrypt TowX secrets before persisting to form meta (lazy migration from plaintext on save).
+	 *
+	 * @param array $form     Form array.
+	 * @param array $settings Settings passed to GFAPI/update_form_meta.
+	 * @return bool
+	 */
+	public function save_form_settings( $form, $settings ) {
+		if ( is_array( $settings ) ) {
+			foreach ( GF_Tops_Secrets::secret_field_names() as $secret_key ) {
+				if ( ! array_key_exists( $secret_key, $settings ) ) {
+					continue;
+				}
+				$val = $settings[ $secret_key ];
+				if ( null === $val || '' === $val ) {
+					continue;
+				}
+				$settings[ $secret_key ] = GF_Tops_Secrets::encrypt_at_rest( (string) $val );
+			}
+		}
+
+		return parent::save_form_settings( $form, $settings );
 	}
 
 	/**

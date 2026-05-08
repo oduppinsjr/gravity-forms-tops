@@ -4,7 +4,7 @@ Tags: gravity forms, tops, towx, towing, api
 Requires at least: 6.2
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.3.4
+Stable tag: 1.3.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -39,13 +39,16 @@ The Plugin Directory restricts starting certain trademark-related terms (includi
 
 = Where are my TowX password and key stored? =
 
-In Gravity Forms form meta for that form. Restrict who can edit forms and use HTTPS for wp-admin.
+In Gravity Forms form meta for that form. Current versions encrypt the password and authentication key at rest (Gravity Forms AES-256-CTR + HMAC). Anyone with both database access and `wp-config.php` could still decrypt them. Restrict who can edit forms and use HTTPS for wp-admin.
 
 = Can I use different field IDs on different sites? =
 
 Yes. Configure the field map separately on each site.
 
 == Changelog ==
+
+= 1.3.5 =
+* Encrypt TowX **password** and **authentication key** at rest in form meta using `GFCommon::openssl_encrypt` (same scheme as Gravity Forms). Existing plaintext values migrate to ciphertext the next time form settings are saved.
 
 = 1.3.4 =
 * Production readiness: Plugin Check fixes — translators comments for JS i18n strings with placeholders; escaped admin request-log output; documented nonce waiver for read-only GET navigation; `phpcs:ignore` on required `http_api_curl` options (no `wp_remote_*` equivalent for these TLS/SNI flags).
