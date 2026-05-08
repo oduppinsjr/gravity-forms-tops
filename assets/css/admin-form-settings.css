@@ -1,0 +1,65 @@
+/**
+ * Gravity Forms TOPS — form settings tweaks.
+ */
+
+.gf-tops-auth-actions {
+	margin: 0.5em 0 0;
+}
+
+.gf-tops-auth-buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin: 0 0 0.35em;
+}
+
+.gf-tops-auth-actions .gf-tops-test-auth-result {
+	margin-top: 0.25em;
+}
+
+.gf-tops-fieldmap-save-row {
+	margin-top: 1.25em;
+	margin-bottom: 0.25em;
+}
+
+.gf-tops-test-auth-result.gf-tops-success {
+	color: #00a32a;
+	font-weight: 600;
+}
+
+.gf-tops-test-auth-result.gf-tops-error {
+	color: #d63638;
+	font-weight: 600;
+}
+
+.gf-tops-test-auth-result .gf-tops-test-auth-summary {
+	margin: 0.35em 0 0.5em;
+	font-weight: 600;
+}
+
+.gf-tops-test-auth-result.gf-tops-success .gf-tops-test-auth-summary {
+	color: #00a32a;
+}
+
+.gf-tops-test-auth-result .gf-tops-test-auth-details {
+	display: block;
+	max-height: 280px;
+	overflow: auto;
+	margin: 0;
+	padding: 8px 10px;
+	font-size: 12px;
+	line-height: 1.45;
+	white-space: pre-wrap;
+	word-break: break-word;
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	border-radius: 2px;
+	color: #1d2327;
+	font-weight: 400;
+}
+
+.gf-tops-test-auth-result.gf-tops-error .gf-tops-test-auth-details {
+	border-color: #d63638;
+	background: #fcf0f1;
+}

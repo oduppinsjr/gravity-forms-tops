@@ -1,0 +1,11 @@
+/**
+ * TowX-mapped field label marker (JS appends .gf-tops-source-marker).
+ */
+.gfield_label .gf-tops-source-marker,
+legend.gfield_label .gf-tops-source-marker {
+	margin-left: 0.28em;
+	vertical-align: middle;
+	opacity: 0.88;
+	font-size: 1em;
+	line-height: 1;
+}
